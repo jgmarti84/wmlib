@@ -7,9 +7,9 @@ import time
 import re
 import structlog
 
-from ..config import FTPConfig
-from ..utils.exceptions import FTPConnectionError, FTPDownloadError, FTPListError
-from ..utils.bufr_utils import validate_bufr_filename
+from src.config import FTPConfig
+from src.utils.exceptions import FTPConnectionError, FTPDownloadError, FTPListError
+from src.utils.bufr_utils import validate_bufr_filename
 
 logger = structlog.get_logger()
 

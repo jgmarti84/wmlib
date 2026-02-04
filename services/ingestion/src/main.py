@@ -3,9 +3,9 @@ import sys
 from pathlib import Path
 import structlog
 
-from .config import load_settings
-from .database import DatabaseManager
-from .services import IngestionService
+from src.config import load_settings
+from src.database import DatabaseManager
+from src.services import IngestionService
 
 
 def setup_logging(log_level: str = "INFO"):

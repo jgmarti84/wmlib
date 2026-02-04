@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
 
-from ..config import Settings
+from src.config import Settings
 import structlog
 
 logger = structlog.get_logger()
@@ -81,12 +81,12 @@ class DatabaseManager:
     
     def create_all(self):
         """Create all database tables."""
-        from ..models import Base
+        from src.models import Base
         Base.metadata.create_all(self.engine)
         logger.info("database_tables_created")
     
     def drop_all(self):
         """Drop all database tables (use with caution)."""
-        from ..models import Base
+        from src.models import Base
         Base.metadata.drop_all(self.engine)
         logger.warning("database_tables_dropped")

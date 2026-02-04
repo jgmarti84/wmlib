@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy import Enum as SQLEnum
 
-from . import Base
+from src.models import Base
 
 
 class FileStatus(str, Enum):
