@@ -196,6 +196,73 @@ class FTPClient:
                 details={"path": remote_path}
             )
     
+    def list_dir(self, remote_path: str) -> List[str]:
+        """List directory names in remote path.
+        
+        Args:
+            remote_path: Path on FTP server
+            
+        Returns:
+            List of directory names (not full paths, just names)
+            
+        Raises:
+            FTPListError: If listing fails
+        """
+        if not self.is_connected():
+            raise FTPConnectionError("Not connected to FTP server")
+        
+        try:
+            logger.debug("ftp_listing_directories", path=remote_path)
+            
+            directories = []
+            
+            # Use MLSD if available (more reliable), otherwise fall back to NLST
+            try:
+                for name, facts in self.ftp.mlsd(remote_path):
+                    # Skip current and parent directory entries
+                    if name in ('.', '..'):
+                        continue
+                    # Only include directories
+                    if facts.get('type') == 'dir':
+                        directories.append(name)
+            except (error_perm, AttributeError):
+                # MLSD not supported, try NLST and filter
+                # Get all entries
+                all_entries = self.ftp.nlst(remote_path)
+                
+                # Filter to get only directories by trying to CWD into each
+                current_dir = self.ftp.pwd()
+                for entry in all_entries:
+                    # Extract just the name from full path if needed
+                    entry_name = entry.split('/')[-1]
+                    if entry_name in ('.', '..'):
+                        continue
+                    
+                    try:
+                        # Try to change to this directory to verify it's a directory
+                        test_path = f"{remote_path}/{entry_name}" if not remote_path.endswith('/') else f"{remote_path}{entry_name}"
+                        self.ftp.cwd(test_path)
+                        directories.append(entry_name)
+                    except error_perm:
+                        # Not a directory, skip
+                        pass
+                
+                # Return to original directory
+                try:
+                    self.ftp.cwd(current_dir)
+                except:
+                    pass
+            
+            logger.debug("ftp_directories_listed", path=remote_path, count=len(directories))
+            return directories
+            
+        except Exception as e:
+            logger.error("ftp_list_dir_failed", path=remote_path, error=str(e))
+            raise FTPListError(
+                f"Failed to list directories: {str(e)}",
+                details={"path": remote_path}
+            )
+    
     def download_file(
         self,
         remote_path: str,
