@@ -1,0 +1,47 @@
+# FTP Configuration
+ftp:
+  host: "ftp.example.com"
+  port: 21
+  username: "your_username"
+  password: "your_password"
+  base_path: "/radar_data"
+  timeout: 30
+  passive_mode: true
+
+# Radar Configuration
+radars:
+  - id: "radar_001"
+    name: "Example Radar Station"
+    enabled: true
+    strategies:
+      - strategy_id: "0315"
+        volumes:
+          - number: "01"
+            fields: ["DBZH", "KDP", "RHOHV"]
+          - number: "02"
+            fields: ["VRAD", "WRAD"]
+
+# Database Configuration
+database:
+  host: "postgres"
+  port: 5432
+  name: "wmlib"
+  user: "wmlib_user"
+  password: "wmlib_password"
+  pool_size: 10
+  max_overflow: 20
+
+# Application Configuration
+app:
+  environment: "development"
+  log_level: "INFO"
+  polling_interval: 300  # seconds
+  max_concurrent_downloads: 5
+  retry_max_attempts: 3
+  retry_backoff_factor: 2
+
+# Storage Configuration
+storage:
+  bufr_path: "/data/bufr"
+  cog_path: "/data/cogs"
+  retention_days: 30

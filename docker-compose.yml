@@ -1,0 +1,67 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: wmlib-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-wmlib}
+      POSTGRES_USER: ${DB_USER:-wmlib_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-wmlib_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-wmlib_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wmlib-network
+
+  ingestion:
+    build:
+      context: ./services/ingestion
+      dockerfile: Dockerfile
+    container_name: wmlib-ingestion
+    environment:
+      # Database
+      DATABASE__HOST: postgres
+      DATABASE__PORT: 5432
+      DATABASE__NAME: ${DB_NAME:-wmlib}
+      DATABASE__USER: ${DB_USER:-wmlib_user}
+      DATABASE__PASSWORD: ${DB_PASSWORD:-wmlib_password}
+      # FTP
+      FTP__HOST: ${FTP_HOST}
+      FTP__PORT: ${FTP_PORT:-21}
+      FTP__USERNAME: ${FTP_USERNAME}
+      FTP__PASSWORD: ${FTP_PASSWORD}
+      FTP__BASE_PATH: ${FTP_BASE_PATH:-/radar_data}
+      # App
+      APP__ENVIRONMENT: ${ENVIRONMENT:-development}
+      APP__LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      APP__POLLING_INTERVAL: ${POLLING_INTERVAL:-300}
+    volumes:
+      - bufr_data:/data/bufr
+      - cog_data:/data/cogs
+      - ./config/config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - wmlib-network
+
+volumes:
+  postgres_data:
+    driver: local
+  bufr_data:
+    driver: local
+  cog_data:
+    driver: local
+
+networks:
+  wmlib-network:
+    driver: bridge
