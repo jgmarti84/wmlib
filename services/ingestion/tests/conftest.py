@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, MagicMock
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session as SQLASession
 
 from src.models import Base
 from src.config import Settings, FTPConfig, DatabaseConfig, AppConfig, StorageConfig, RadarConfig
@@ -49,13 +49,14 @@ def test_settings(tmp_path_factory):
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def db_engine():
-    """Create test database engine."""
+    """Create test database engine with function scope."""
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     yield engine
     Base.metadata.drop_all(engine)
+    engine.dispose()
 
 
 @pytest.fixture
@@ -63,9 +64,14 @@ def db_session(db_engine):
     """Create test database session."""
     Session = sessionmaker(bind=db_engine)
     session = Session()
-    yield session
-    session.rollback()
-    session.close()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 @pytest.fixture

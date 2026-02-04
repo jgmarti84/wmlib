@@ -41,8 +41,8 @@ class BUFRFile(Base):
     retry_count = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
     file_size = Column(Integer, nullable=True)  # Size in bytes
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow())
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
     
     # Relationships
     radar = relationship("Radar", back_populates="bufr_files")

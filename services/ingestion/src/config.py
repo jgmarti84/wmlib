@@ -1,8 +1,8 @@
 """Configuration management using Pydantic."""
 from pathlib import Path
 from typing import List, Optional
-from pydantic import BaseModel, Field, validator
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel, Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class FTPConfig(BaseModel):
@@ -75,7 +75,8 @@ class StorageConfig(BaseModel):
     cog_path: Path = Field(..., description="Path for COG files")
     retention_days: int = Field(30, description="Data retention in days")
     
-    @validator("bufr_path", "cog_path")
+    @field_validator("bufr_path", "cog_path")
+    @classmethod
     def create_path(cls, v: Path) -> Path:
         """Create path if it doesn't exist."""
         v.mkdir(parents=True, exist_ok=True)
@@ -85,17 +86,17 @@ class StorageConfig(BaseModel):
 class Settings(BaseSettings):
     """Main application settings."""
     
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_nested_delimiter="__"
+    )
+    
     ftp: FTPConfig
     radars: List[RadarConfig]
     database: DatabaseConfig
     app: AppConfig
     storage: StorageConfig
-    
-    class Config:
-        """Pydantic config."""
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        env_nested_delimiter = "__"
 
 
 def load_settings() -> Settings:

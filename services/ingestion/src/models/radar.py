@@ -23,8 +23,8 @@ class Radar(Base):
     name = Column(String(200), nullable=False)
     enabled = Column(Boolean, default=True, nullable=False)
     strategies = Column(JSON, nullable=False)  # Store strategies configuration as JSON
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow())
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
     
     # Relationships
     bufr_files = relationship("BUFRFile", back_populates="radar", cascade="all, delete-orphan")
