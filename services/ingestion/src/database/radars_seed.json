@@ -1,0 +1,122 @@
+[
+  {
+    "code": "AR5",
+    "title": "Pergamino",
+    "description": "Radar Doppler Polarización Simple",
+    "center_lat": "-33.94612000",
+    "center_long": "-60.56260000",
+    "is_active": true
+  },
+  {
+    "code": "AR7",
+    "title": "Parana",
+    "description": "Gematronik Doppler Dual-pol",
+    "center_lat": "-31.84849000",
+    "center_long": "-60.53724000",
+    "is_active": true
+  },
+  {
+    "code": "AR8",
+    "title": "Anguil",
+    "description": "Gematronik Doppler Dual-pol",
+    "center_lat": "-36.53965000",
+    "center_long": "-63.98984000",
+    "is_active": true
+  },
+  {
+    "code": "RMA1",
+    "title": "Cordoba",
+    "description": "Radar RMA1",
+    "center_lat": "-31.44138889",
+    "center_long": "-64.19194444",
+    "is_active": true
+  },
+  {
+    "code": "RMA2",
+    "title": "Ezeiza",
+    "description": "RMA Doppler Dual-pol",
+    "center_lat": "-34.80082000",
+    "center_long": "-58.51557000",
+    "is_active": true
+  },
+  {
+    "code": "RMA3",
+    "title": "Las Lomitas",
+    "description": "RMA Doppler Dual-pol",
+    "center_lat": "-24.73028000",
+    "center_long": "-60.55139000",
+    "is_active": true
+  },
+  {
+    "code": "RMA4",
+    "title": "Resistencia",
+    "description": "RMA Doppler Dual-pol",
+    "center_lat": "-27.45167000",
+    "center_long": "-59.05083000",
+    "is_active": true
+  },
+  {
+    "code": "RMA5",
+    "title": "Bernardo de Irigoyen",
+    "description": "RMA Doppler Dual-pol",
+    "center_lat": "-26.27812000",
+    "center_long": "-53.67085000",
+    "is_active": true
+  },
+  {
+    "code": "RMA6",
+    "title": "Mar del Plata",
+    "description": "RMA Doppler Dual-pol",
+    "center_lat": "-37.91306000",
+    "center_long": "-57.52783000",
+    "is_active": true
+  },
+  {
+    "code": "RMA7",
+    "title": "Neuquen",
+    "description": "RMA Doppler Dual-pol",
+    "center_lat": "-38.87662000",
+    "center_long": "-68.14489000",
+    "is_active": true
+  },
+  {
+    "code": "RMA8",
+    "title": "Mercedes",
+    "description": "RMA Doppler Dual-pol - Corrientes",
+    "center_lat": "-29.19591002",
+    "center_long": "-58.04485001",
+    "is_active": true
+  },
+  {
+    "code": "RMA9",
+    "title": "Rio Grande",
+    "description": "RMA Doppler Dual-pol",
+    "center_lat": "-67.74426000",
+    "center_long": "-53.78399000",
+    "is_active": true
+  },
+  {
+    "code": "RMA10",
+    "title": "Espora",
+    "description": "RMA Doppler Dual-pol",
+    "center_lat": "-38.73426000",
+    "center_long": "-62.16341000",
+    "is_active": true
+  },
+  {
+    "code": "RMA11",
+    "title": "TermasRioHondo",
+    "description": "RMA Doppler Dual-pol",
+    "center_lat": "-27.50260000",
+    "center_long": "-64.90575000",
+    "is_active": true
+  },
+  {
+    "code": "RMA12",
+    "title": "Bariloche",
+    "description": "RMA Doppler Dual-pol",
+    "center_lat": "-41.13944000",
+    "center_long": "-71.14944000",
+    "is_active": true
+  }
+]

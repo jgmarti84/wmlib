@@ -1,0 +1,62 @@
+# FTP Configuration
+# FTP server follows hierarchical structure: /{base_path}/{radar_code}/YYYY/MM/DD/HH/MMSS/
+ftp:
+  host: "ftp.example.com"
+  port: 21
+  username: "your_username"
+  password: "your_password"
+  base_path: "/L2"  # Base path before radar name (e.g., /L2 for standard structure)
+  timeout: 30
+  passive_mode: true
+
+# Radar Configuration
+# Use standard RMA radar codes (RMA1, RMA11, etc.)
+# Location metadata (title, description, lat/long) is loaded from seed data
+# BUFR filename format: RADAR_VOLCODE_VOLNR_FIELD_TIMESTAMP.BUFR
+# Example: RMA11_0315_01_DBZH_20251120T120000Z.BUFR
+radars:
+  - code: "RMA11"  # Anguil - metadata loaded from seed
+    strategies:
+      - strategy_id: "0315"  # Strategy/volume code (4 digits)
+        volumes:
+          - number: "01"  # Volume number (2 digits)
+            fields: ["DBZH", "DBZV", "ZDR", "RHOHV", "PHIDP", "KDP"]
+          - number: "02"
+            fields: ["VRAD", "WRAD"]
+  - code: "RMA1"  # Cordoba - metadata loaded from seed
+    strategies:
+      - strategy_id: "0315"
+        volumes:
+          - number: "01"
+            fields: ["DBZH", "KDP", "RHOHV"]
+  - code: "RMA4"  # Resistencia - metadata loaded from seed
+    strategies:
+      - strategy_id: "0315"
+        volumes:
+          - number: "01"
+            fields: ["DBZH", "DBZV", "ZDR", "RHOHV", "PHIDP"]
+
+# Database Configuration
+database:
+  host: "postgres"
+  port: 5432
+  name: "wmlib"
+  user: "wmlib_user"
+  password: "wmlib_password"
+  pool_size: 10
+  max_overflow: 20
+
+# Application Configuration
+app:
+  environment: "development"
+  log_level: "INFO"
+  polling_interval: 300  # seconds (5 minutes)
+  max_concurrent_downloads: 5
+  retry_max_attempts: 3
+  retry_backoff_factor: 2
+
+# Storage Configuration
+storage:
+  bufr_path: "/data/bufr"  # Local storage for BUFR files
+  cog_path: "/data/cogs"   # Local storage for COG files (future phase)
+  retention_days: 30
