@@ -1,25 +1,37 @@
 # FTP Configuration
+# FTP server follows hierarchical structure: /{base_path}/{radar_name}/YYYY/MM/DD/HH/MMSS/
 ftp:
   host: "ftp.example.com"
   port: 21
   username: "your_username"
   password: "your_password"
-  base_path: "/radar_data"
+  base_path: "/L2"  # Base path before radar name (e.g., /L2 for standard structure)
   timeout: 30
   passive_mode: true
 
 # Radar Configuration
+# Use standard RMA radar names (RMA1, RMA11, etc.)
+# BUFR filename format: RADAR_VOLCODE_VOLNR_FIELD_TIMESTAMP.BUFR
+# Example: RMA11_0315_01_DBZH_20251120T120000Z.BUFR
 radars:
-  - id: "radar_001"
-    name: "Example Radar Station"
+  - id: "RMA11"  # Use actual radar ID (e.g., RMA1, RMA11, RMA4)
+    name: "Anguil"
     enabled: true
+    strategies:
+      - strategy_id: "0315"  # Strategy/volume code (4 digits)
+        volumes:
+          - number: "01"  # Volume number (2 digits)
+            fields: ["DBZH", "DBZV", "ZDR", "RHOHV", "PHIDP", "KDP"]
+          - number: "02"
+            fields: ["VRAD", "WRAD"]
+  - id: "RMA1"
+    name: "Ezeiza"
+    enabled: false  # Can be disabled
     strategies:
       - strategy_id: "0315"
         volumes:
           - number: "01"
             fields: ["DBZH", "KDP", "RHOHV"]
-          - number: "02"
-            fields: ["VRAD", "WRAD"]
 
 # Database Configuration
 database:
@@ -35,13 +47,13 @@ database:
 app:
   environment: "development"
   log_level: "INFO"
-  polling_interval: 300  # seconds
+  polling_interval: 300  # seconds (5 minutes)
   max_concurrent_downloads: 5
   retry_max_attempts: 3
   retry_backoff_factor: 2
 
 # Storage Configuration
 storage:
-  bufr_path: "/data/bufr"
-  cog_path: "/data/cogs"
+  bufr_path: "/data/bufr"  # Local storage for BUFR files
+  cog_path: "/data/cogs"   # Local storage for COG files (future phase)
   retention_days: 30

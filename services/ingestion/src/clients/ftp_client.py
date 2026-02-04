@@ -1,13 +1,15 @@
 """FTP client for downloading BUFR files."""
 from ftplib import FTP, error_perm, error_temp
 from pathlib import Path
-from typing import List, Optional, Tuple
-from datetime import datetime
+from typing import List, Optional, Tuple, Generator, Pattern
+from datetime import datetime, timezone
 import time
+import re
 import structlog
 
 from ..config import FTPConfig
 from ..utils.exceptions import FTPConnectionError, FTPDownloadError, FTPListError
+from ..utils.bufr_utils import validate_bufr_filename
 
 logger = structlog.get_logger()
 
@@ -293,6 +295,164 @@ class FTPClient:
             f"Failed to download file after {retry_count} attempts: {str(last_error)}",
             details={"remote_path": remote_path, "attempts": retry_count}
         )
+    
+    def traverse_radar(
+        self,
+        radar_name: str,
+        dt_start: Optional[datetime] = None,
+        dt_end: Optional[datetime] = None,
+        include_start: bool = True,
+        include_end: bool = True,
+        vol_types: Optional[Pattern] = None,
+    ) -> Generator[Tuple[datetime, str, str], None, None]:
+        """
+        Traverse FTP folders for BUFR files in hierarchical date structure.
+        
+        Expected FTP structure: /{base_path}/{radar_name}/YYYY/MM/DD/HH/MMSS/
+        Files follow pattern: RADAR_VOLCODE_VOLNR_FIELD_TIMESTAMP.BUFR
+        
+        Args:
+            radar_name: Radar identifier (e.g., 'RMA1', 'RMA11')
+            dt_start: Start datetime (UTC), defaults to datetime.min if None
+            dt_end: End datetime (UTC), defaults to datetime.max if None
+            include_start: Include files at dt_start time
+            include_end: Include files at dt_end time
+            vol_types: Optional compiled regex pattern to filter by volume types
+            
+        Yields:
+            Tuple of (datetime, filename, remote_path)
+            
+        Example:
+            >>> for dt, fname, path in client.traverse_radar('RMA11', dt_start, dt_end):
+            >>>     print(f"{dt}: {fname}")
+        """
+        if not self.is_connected():
+            raise FTPConnectionError("Not connected to FTP server")
+        
+        base_path = f"{self.config.base_path}/{radar_name}"
+        
+        if dt_start is None:
+            dt_start = datetime.min.replace(tzinfo=timezone.utc)
+        if dt_end is None:
+            dt_end = datetime.max.replace(tzinfo=timezone.utc)
+        
+        try:
+            # Traverse year directories
+            years = sorted(self.list_dir(base_path))
+            for year in years:
+                try:
+                    year_int = int(year)
+                except ValueError:
+                    continue
+                    
+                if year_int < dt_start.year or year_int > dt_end.year:
+                    continue
+                    
+                year_path = f"{base_path}/{year}"
+                
+                # Traverse month directories
+                months = sorted(self.list_dir(year_path))
+                for month in months:
+                    try:
+                        month_int = int(month)
+                    except ValueError:
+                        continue
+                        
+                    if year_int == dt_start.year and month_int < dt_start.month:
+                        continue
+                    if year_int == dt_end.year and month_int > dt_end.month:
+                        continue
+                        
+                    month_path = f"{year_path}/{month}"
+                    
+                    # Traverse day directories
+                    days = sorted(self.list_dir(month_path))
+                    for day in days:
+                        try:
+                            day_int = int(day)
+                        except ValueError:
+                            continue
+                            
+                        if year_int == dt_start.year and month_int == dt_start.month and day_int < dt_start.day:
+                            continue
+                        if year_int == dt_end.year and month_int == dt_end.month and day_int > dt_end.day:
+                            continue
+                            
+                        day_path = f"{month_path}/{day}"
+                        
+                        # Traverse hour directories
+                        hours = sorted(self.list_dir(day_path))
+                        for hour in hours:
+                            try:
+                                hour_int = int(hour)
+                            except ValueError:
+                                continue
+                                
+                            if (year_int == dt_start.year and month_int == dt_start.month and 
+                                day_int == dt_start.day and hour_int < dt_start.hour):
+                                continue
+                            if (year_int == dt_end.year and month_int == dt_end.month and 
+                                day_int == dt_end.day and hour_int > dt_end.hour):
+                                continue
+                                
+                            hour_path = f"{day_path}/{hour}"
+                            
+                            # Traverse minute/second directories (format: MMSS)
+                            minutes = sorted(self.list_dir(hour_path))
+                            for minute_str in minutes:
+                                try:
+                                    # Extract minute and second from MMSS format
+                                    minute_int = int(minute_str[:2])
+                                    second_int = int(minute_str[2:]) if len(minute_str) > 2 else 0
+                                except ValueError:
+                                    continue
+                                    
+                                # Build datetime for this directory
+                                try:
+                                    dt = datetime(
+                                        year_int, month_int, day_int,
+                                        hour_int, minute_int, second_int,
+                                        tzinfo=timezone.utc
+                                    )
+                                except ValueError:
+                                    continue
+                                
+                                # Apply datetime range filtering with inclusivity
+                                if include_start:
+                                    if dt < dt_start:
+                                        continue
+                                else:
+                                    if dt <= dt_start:
+                                        continue
+                                
+                                if include_end:
+                                    if dt > dt_end:
+                                        continue
+                                else:
+                                    if dt >= dt_end:
+                                        continue
+                                
+                                # List files in this minute directory
+                                minute_path = f"{hour_path}/{minute_str}"
+                                files = self.list_dir(minute_path)
+                                
+                                for filename in files:
+                                    # Filter by vol_types if provided
+                                    if vol_types is not None:
+                                        if not vol_types.match(filename):
+                                            continue
+                                    
+                                    # Validate BUFR filename
+                                    if not validate_bufr_filename(filename):
+                                        continue
+                                    
+                                    full_remote_path = f"{minute_path}/{filename}"
+                                    yield dt, filename, full_remote_path
+                                    
+        except FTPListError as e:
+            logger.error("traverse_failed", radar_name=radar_name, error=str(e))
+        except Exception as e:
+            logger.error("traverse_unexpected_error", radar_name=radar_name, error=str(e))
     
     def _match_pattern(self, filename: str, pattern: str) -> bool:
         """Simple pattern matching for file names.
