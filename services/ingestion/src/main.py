@@ -71,7 +71,7 @@ def main():
     # Load radar seed data into database
     try:
         from src.database.init_db import ensure_radars_from_seed
-        with db_manager.session_scope() as session:
+        with db_manager.get_session() as session:
             ensure_radars_from_seed(session)
         logger.info("radar_seed_data_loaded")
     except Exception as e:
