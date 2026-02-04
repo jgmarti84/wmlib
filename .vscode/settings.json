@@ -1,0 +1,14 @@
+{
+  "github.copilot.advanced": {
+    "contextFiles": [
+      ".github/copilot-instructions.md",
+      "docs/COPILOT_INSTRUCTIONS.md"
+    ]
+  },
+  "github.copilot.enable": {
+    "*": true,
+    "yaml": true,
+    "markdown": true,
+    "plaintext": false
+  }
+}
