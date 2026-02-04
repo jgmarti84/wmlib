@@ -1,10 +1,7 @@
 """Radar configuration model."""
-from datetime import datetime
-from typing import List
-import uuid
-from sqlalchemy import Column, String, DateTime, Boolean, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, Boolean, Numeric
 from sqlalchemy.orm import relationship
+from sqlalchemy import func
 
 from src.models import Base
 
@@ -12,22 +9,24 @@ from src.models import Base
 class Radar(Base):
     """Radar station configuration and metadata.
     
-    Stores configuration for each radar station including its
-    strategies and volumes for data collection.
+    Stores configuration for each radar station including location,
+    status, and metadata. Strategies are linked via RadarStrategy table.
     """
     
     __tablename__ = "radars"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    radar_id = Column(String(50), unique=True, nullable=False, index=True)
-    name = Column(String(200), nullable=False)
-    enabled = Column(Boolean, default=True, nullable=False)
-    strategies = Column(JSON, nullable=False)  # Store strategies configuration as JSON
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow())
-    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    code = Column(String(16), primary_key=True)
+    title = Column(String(64), nullable=False)
+    description = Column(String(64), nullable=True)
+    center_lat = Column(Numeric(12, 8), nullable=False)
+    center_long = Column(Numeric(12, 8), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
     bufr_files = relationship("BUFRFile", back_populates="radar", cascade="all, delete-orphan")
+    radar_strategies = relationship("RadarStrategy", back_populates="radar", cascade="all, delete-orphan")
     
     def __repr__(self) -> str:
-        return f"<Radar(radar_id='{self.radar_id}', name='{self.name}', enabled={self.enabled})>"
+        return f"<Radar(code='{self.code}', title='{self.title}', is_active={self.is_active})>"

@@ -1,6 +1,7 @@
 """Integration test for database operations."""
 import pytest
 from datetime import datetime
+from decimal import Decimal
 
 from src.models.radar import Radar
 from src.models.bufr_file import BUFRFile, FileStatus
@@ -15,54 +16,57 @@ class TestDatabaseIntegration:
         repo = RadarRepository(db_session)
         
         radar = Radar(
-            radar_id="test_001",
-            name="Test Radar",
-            enabled=True,
-            strategies=[{"strategy_id": "0315", "volumes": []}]
+            code="RMA11",
+            title="Test Radar",
+            description="Test radar description",
+            center_lat=Decimal("-36.5367"),
+            center_long=Decimal("-63.9992"),
+            is_active=True
         )
         
         created = repo.create(radar)
         
-        assert created.id is not None
-        assert created.radar_id == "test_001"
-        assert created.name == "Test Radar"
+        assert created.code == "RMA11"
+        assert created.title == "Test Radar"
+        assert created.is_active is True
     
-    def test_get_radar_by_id(self, db_session):
-        """Test retrieving radar by radar_id."""
+    def test_get_radar_by_code(self, db_session):
+        """Test retrieving radar by code."""
         repo = RadarRepository(db_session)
         
         radar = Radar(
-            radar_id="test_002",
-            name="Test Radar 2",
-            enabled=True,
-            strategies=[]
+            code="RMA1",
+            title="Test Radar 2",
+            center_lat=Decimal("-34.8222"),
+            center_long=Decimal("-58.5358"),
+            is_active=True
         )
         created = repo.create(radar)
         db_session.commit()
         
-        retrieved = repo.get_by_radar_id("test_002")
+        retrieved = repo.get_by_code("RMA1")
         
         assert retrieved is not None
-        assert retrieved.id == created.id
-        assert retrieved.radar_id == "test_002"
+        assert retrieved.code == created.code
+        assert retrieved.code == "RMA1"
     
-    def test_get_all_enabled_radars(self, db_session):
-        """Test retrieving all enabled radars."""
+    def test_get_all_active_radars(self, db_session):
+        """Test retrieving all active radars."""
         repo = RadarRepository(db_session)
         
-        radar1 = Radar(radar_id="r1", name="R1", enabled=True, strategies=[])
-        radar2 = Radar(radar_id="r2", name="R2", enabled=False, strategies=[])
-        radar3 = Radar(radar_id="r3", name="R3", enabled=True, strategies=[])
+        radar1 = Radar(code="R1", title="R1", center_lat=Decimal("0"), center_long=Decimal("0"), is_active=True)
+        radar2 = Radar(code="R2", title="R2", center_lat=Decimal("0"), center_long=Decimal("0"), is_active=False)
+        radar3 = Radar(code="R3", title="R3", center_lat=Decimal("0"), center_long=Decimal("0"), is_active=True)
         
         repo.create(radar1)
         repo.create(radar2)
         repo.create(radar3)
         db_session.commit()
         
-        enabled = repo.get_all_enabled()
+        active = repo.get_all_active()
         
-        assert len(enabled) == 2
-        assert all(r.enabled for r in enabled)
+        assert len(active) == 2
+        assert all(r.is_active for r in active)
     
     def test_create_bufr_file(self, db_session):
         """Test creating BUFR file record."""
@@ -70,13 +74,13 @@ class TestDatabaseIntegration:
         file_repo = BUFRFileRepository(db_session)
         
         # Create radar first
-        radar = Radar(radar_id="r1", name="R1", enabled=True, strategies=[])
+        radar = Radar(code="RMA11", title="R1", center_lat=Decimal("0"), center_long=Decimal("0"), is_active=True)
         radar_repo.create(radar)
         db_session.commit()
         
         # Create BUFR file
         bufr_file = BUFRFile(
-            radar_id=radar.id,
+            radar_code=radar.code,
             file_path="/data/test.bufr",
             remote_path="/remote/test.bufr",
             datetime=datetime.utcnow(),
@@ -96,12 +100,12 @@ class TestDatabaseIntegration:
         radar_repo = RadarRepository(db_session)
         file_repo = BUFRFileRepository(db_session)
         
-        radar = Radar(radar_id="r1", name="R1", enabled=True, strategies=[])
+        radar = Radar(code="RMA11", title="R1", center_lat=Decimal("0"), center_long=Decimal("0"), is_active=True)
         radar_repo.create(radar)
         db_session.commit()
         
         bufr_file = BUFRFile(
-            radar_id=radar.id,
+            radar_code=radar.code,
             file_path="/data/test.bufr",
             remote_path="/remote/test.bufr",
             datetime=datetime.utcnow(),
@@ -124,14 +128,14 @@ class TestDatabaseIntegration:
         radar_repo = RadarRepository(db_session)
         file_repo = BUFRFileRepository(db_session)
         
-        radar = Radar(radar_id="r1", name="R1", enabled=True, strategies=[])
+        radar = Radar(code="RMA11", title="R1", center_lat=Decimal("0"), center_long=Decimal("0"), is_active=True)
         radar_repo.create(radar)
         db_session.commit()
         
         # Create multiple files
         for i in range(5):
             bufr_file = BUFRFile(
-                radar_id=radar.id,
+                radar_code=radar.code,
                 file_path=f"/data/test{i}.bufr",
                 remote_path=f"/remote/test{i}.bufr",
                 datetime=datetime.utcnow(),
@@ -142,7 +146,7 @@ class TestDatabaseIntegration:
             file_repo.create(bufr_file)
         db_session.commit()
         
-        pending = file_repo.get_pending_for_radar(radar.id, limit=10)
+        pending = file_repo.get_pending_for_radar(radar.code, limit=10)
         
         assert len(pending) == 3
         assert all(f.status == FileStatus.PENDING for f in pending)

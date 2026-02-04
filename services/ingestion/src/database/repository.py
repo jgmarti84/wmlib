@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from src.models.radar import Radar
+from src.models.strategy import Strategy, Volume, RadarStrategy
 from src.models.bufr_file import BUFRFile, FileStatus
 import structlog
 
@@ -22,35 +23,24 @@ class RadarRepository:
         """
         self.session = session
     
-    def get_by_id(self, radar_id: UUID) -> Optional[Radar]:
-        """Get radar by UUID.
+    def get_by_code(self, code: str) -> Optional[Radar]:
+        """Get radar by code.
         
         Args:
-            radar_id: Radar UUID
+            code: Radar code (primary key)
             
         Returns:
             Radar instance or None
         """
-        return self.session.query(Radar).filter(Radar.id == radar_id).first()
+        return self.session.query(Radar).filter(Radar.code == code).first()
     
-    def get_by_radar_id(self, radar_id: str) -> Optional[Radar]:
-        """Get radar by radar_id string.
-        
-        Args:
-            radar_id: Radar identifier string
-            
-        Returns:
-            Radar instance or None
-        """
-        return self.session.query(Radar).filter(Radar.radar_id == radar_id).first()
-    
-    def get_all_enabled(self) -> List[Radar]:
-        """Get all enabled radars.
+    def get_all_active(self) -> List[Radar]:
+        """Get all active radars.
         
         Returns:
-            List of enabled radars
+            List of active radars
         """
-        return self.session.query(Radar).filter(Radar.enabled == True).all()
+        return self.session.query(Radar).filter(Radar.is_active == True).all()
     
     def create(self, radar: Radar) -> Radar:
         """Create new radar.
@@ -59,11 +49,11 @@ class RadarRepository:
             radar: Radar instance to create
             
         Returns:
-            Created radar with ID
+            Created radar
         """
         self.session.add(radar)
         self.session.flush()
-        logger.info("radar_created", radar_id=radar.radar_id)
+        logger.info("radar_created", radar_code=radar.code)
         return radar
     
     def update(self, radar: Radar) -> Radar:
@@ -75,10 +65,82 @@ class RadarRepository:
         Returns:
             Updated radar
         """
-        radar.updated_at = datetime.utcnow()
         self.session.flush()
-        logger.info("radar_updated", radar_id=radar.radar_id)
+        logger.info("radar_updated", radar_code=radar.code)
         return radar
+
+
+class StrategyRepository:
+    """Repository for Strategy operations."""
+    
+    def __init__(self, session: Session):
+        """Initialize repository with database session.
+        
+        Args:
+            session: SQLAlchemy session
+        """
+        self.session = session
+    
+    def get_by_id(self, strategy_id: UUID) -> Optional[Strategy]:
+        """Get strategy by UUID.
+        
+        Args:
+            strategy_id: Strategy UUID
+            
+        Returns:
+            Strategy instance or None
+        """
+        return self.session.query(Strategy).filter(Strategy.id == strategy_id).first()
+    
+    def get_by_strategy_id(self, strategy_id: str) -> Optional[Strategy]:
+        """Get strategy by strategy_id string.
+        
+        Args:
+            strategy_id: Strategy identifier string
+            
+        Returns:
+            Strategy instance or None
+        """
+        return self.session.query(Strategy).filter(Strategy.strategy_id == strategy_id).first()
+    
+    def get_all_active(self) -> List[Strategy]:
+        """Get all active strategies.
+        
+        Returns:
+            List of active strategies
+        """
+        return self.session.query(Strategy).filter(Strategy.is_active == True).all()
+    
+    def create(self, strategy: Strategy) -> Strategy:
+        """Create new strategy.
+        
+        Args:
+            strategy: Strategy instance to create
+            
+        Returns:
+            Created strategy
+        """
+        self.session.add(strategy)
+        self.session.flush()
+        logger.info("strategy_created", strategy_id=strategy.strategy_id)
+        return strategy
+    
+    def get_strategies_for_radar(self, radar_code: str) -> List[Strategy]:
+        """Get active strategies for a radar.
+        
+        Args:
+            radar_code: Radar code
+            
+        Returns:
+            List of active strategies
+        """
+        return self.session.query(Strategy).join(
+            RadarStrategy
+        ).filter(
+            RadarStrategy.radar_code == radar_code,
+            RadarStrategy.is_active == True,
+            Strategy.is_active == True
+        ).order_by(RadarStrategy.priority).all()
 
 
 class BUFRFileRepository:
@@ -128,18 +190,18 @@ class BUFRFileRepository:
             BUFRFile.status == status
         ).limit(limit).all()
     
-    def get_pending_for_radar(self, radar_id: UUID, limit: int = 10) -> List[BUFRFile]:
+    def get_pending_for_radar(self, radar_code: str, limit: int = 10) -> List[BUFRFile]:
         """Get pending files for a specific radar.
         
         Args:
-            radar_id: Radar UUID
+            radar_code: Radar code
             limit: Maximum number of files to return
             
         Returns:
             List of pending BUFR files
         """
         return self.session.query(BUFRFile).filter(
-            BUFRFile.radar_id == radar_id,
+            BUFRFile.radar_code == radar_code,
             BUFRFile.status == FileStatus.PENDING
         ).order_by(BUFRFile.datetime).limit(limit).all()
     

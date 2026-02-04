@@ -8,6 +8,7 @@ import structlog
 from src.config import Settings
 from src.database import DatabaseManager
 from src.database.repository import RadarRepository, BUFRFileRepository
+from src.database.init_db import initialize_radar_with_strategies, get_active_strategies_for_radar
 from src.clients import FTPClient
 from src.models.radar import Radar
 from src.models.bufr_file import BUFRFile, FileStatus
@@ -45,49 +46,11 @@ class IngestionService:
     def initialize_radars(self):
         """Initialize radar configurations from settings.
         
-        Creates or updates radar records in the database.
+        Creates or updates radar records and their strategies in the database.
         """
         with self.db_manager.get_session() as session:
-            radar_repo = RadarRepository(session)
-            
             for radar_config in self.settings.radars:
-                existing_radar = radar_repo.get_by_radar_id(radar_config.id)
-                
-                if existing_radar:
-                    # Update existing radar
-                    existing_radar.name = radar_config.name
-                    existing_radar.enabled = radar_config.enabled
-                    existing_radar.strategies = [
-                        {
-                            "strategy_id": s.strategy_id,
-                            "volumes": [
-                                {"number": v.number, "fields": v.fields}
-                                for v in s.volumes
-                            ]
-                        }
-                        for s in radar_config.strategies
-                    ]
-                    radar_repo.update(existing_radar)
-                    logger.info("radar_updated", radar_id=radar_config.id)
-                else:
-                    # Create new radar
-                    radar = Radar(
-                        radar_id=radar_config.id,
-                        name=radar_config.name,
-                        enabled=radar_config.enabled,
-                        strategies=[
-                            {
-                                "strategy_id": s.strategy_id,
-                                "volumes": [
-                                    {"number": v.number, "fields": v.fields}
-                                    for v in s.volumes
-                                ]
-                            }
-                            for s in radar_config.strategies
-                        ]
-                    )
-                    radar_repo.create(radar)
-                    logger.info("radar_created", radar_id=radar_config.id)
+                initialize_radar_with_strategies(session, radar_config)
     
     def scan_ftp_for_files(
         self, 
@@ -108,7 +71,7 @@ class IngestionService:
         Returns:
             List of tuples: (datetime, filename, remote_path)
         """
-        logger.info("scanning_ftp", radar_id=radar.radar_id)
+        logger.info("scanning_ftp", radar_code=radar.code)
         
         # Set default date range if not provided (last hour)
         if start_date is None:
@@ -118,9 +81,13 @@ class IngestionService:
         if end_date is None:
             end_date = datetime.now(timezone.utc)
         
+        # Get active strategies for this radar from database
+        with self.db_manager.get_session() as session:
+            strategies = get_active_strategies_for_radar(session, radar.code)
+        
         # Build vol_types regex from radar strategies
         vol_types_dict = {}
-        for strategy_config in radar.strategies:
+        for strategy_config in strategies:
             strategy_id = strategy_config["strategy_id"]
             vol_types_dict[strategy_id] = {}
             
@@ -133,7 +100,7 @@ class IngestionService:
         
         logger.debug(
             "ftp_scan_parameters",
-            radar_id=radar.radar_id,
+            radar_code=radar.code,
             start_date=start_date.isoformat(),
             end_date=end_date.isoformat(),
             vol_types=vol_types_dict
@@ -144,7 +111,7 @@ class IngestionService:
         try:
             # Use traverse_radar method for hierarchical scanning
             for dt, filename, remote_path in self.ftp_client.traverse_radar(
-                radar_name=radar.radar_id,
+                radar_name=radar.code,
                 dt_start=start_date,
                 dt_end=end_date,
                 include_start=False,  # Don't re-download files at start boundary
@@ -154,14 +121,14 @@ class IngestionService:
                 
                 logger.debug(
                     "ftp_file_found",
-                    radar_id=radar.radar_id,
+                    radar_code=radar.code,
                     filename=filename,
                     datetime=dt.isoformat()
                 )
             
             logger.info(
                 "ftp_scan_complete",
-                radar_id=radar.radar_id,
+                radar_code=radar.code,
                 total_files=len(remote_files),
                 date_range=f"{start_date.isoformat()} to {end_date.isoformat()}"
             )
@@ -169,7 +136,7 @@ class IngestionService:
         except Exception as e:
             logger.error(
                 "ftp_scan_error",
-                radar_id=radar.radar_id,
+                radar_code=radar.code,
                 error=str(e)
             )
         
@@ -189,7 +156,7 @@ class IngestionService:
             
             for dt, filename, remote_path in remote_files:
                 # Generate local path based on radar and filename
-                local_path = self.settings.storage.bufr_path / radar.radar_id / filename
+                local_path = self.settings.storage.bufr_path / radar.code / filename
                 
                 # Check if file already tracked
                 existing = file_repo.get_by_path(str(local_path))
@@ -203,7 +170,7 @@ class IngestionService:
                 
                 # Create new file record
                 bufr_file = BUFRFile(
-                    radar_id=radar.id,
+                    radar_code=radar.code,
                     file_path=str(local_path),
                     remote_path=remote_path,
                     datetime=dt,
@@ -217,7 +184,7 @@ class IngestionService:
             
             logger.info(
                 "new_files_tracked",
-                radar_id=radar.radar_id,
+                radar_code=radar.code,
                 new_files=new_count
             )
     
@@ -235,7 +202,7 @@ class IngestionService:
             
             logger.info(
                 "downloading_files",
-                radar_id=radar.radar_id,
+                radar_code=radar.code,
                 pending_count=len(pending_files)
             )
             
@@ -287,7 +254,7 @@ class IngestionService:
         Args:
             radar: Radar instance
         """
-        logger.info("processing_radar", radar_id=radar.radar_id)
+        logger.info("processing_radar", radar_code=radar.code)
         
         try:
             # Scan FTP for files
@@ -300,12 +267,12 @@ class IngestionService:
             # Download pending files
             self.download_pending_files(radar)
             
-            logger.info("radar_processing_complete", radar_id=radar.radar_id)
+            logger.info("radar_processing_complete", radar_code=radar.code)
             
         except Exception as e:
             logger.error(
                 "radar_processing_failed",
-                radar_id=radar.radar_id,
+                radar_code=radar.code,
                 error=str(e)
             )
     
@@ -317,12 +284,12 @@ class IngestionService:
             # Connect to FTP
             self.ftp_client.connect()
             
-            # Get all enabled radars
+            # Get all active radars
             with self.db_manager.get_session() as session:
                 radar_repo = RadarRepository(session)
-                radars = radar_repo.get_all_enabled()
+                radars = radar_repo.get_all_active()
                 
-                logger.info("enabled_radars_found", count=len(radars))
+                logger.info("active_radars_found", count=len(radars))
                 
                 for radar in radars:
                     self.process_radar(radar)

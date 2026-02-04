@@ -13,3 +13,10 @@ convention = {
 
 metadata = MetaData(naming_convention=convention)
 Base = declarative_base(metadata=metadata)
+
+# Import models to ensure they're registered with Base
+from src.models.radar import Radar
+from src.models.strategy import Strategy, Volume, RadarStrategy
+from src.models.bufr_file import BUFRFile, FileStatus
+
+__all__ = ["Base", "Radar", "Strategy", "Volume", "RadarStrategy", "BUFRFile", "FileStatus"]

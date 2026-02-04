@@ -1,5 +1,5 @@
 # FTP Configuration
-# FTP server follows hierarchical structure: /{base_path}/{radar_name}/YYYY/MM/DD/HH/MMSS/
+# FTP server follows hierarchical structure: /{base_path}/{radar_code}/YYYY/MM/DD/HH/MMSS/
 ftp:
   host: "ftp.example.com"
   port: 21
@@ -10,13 +10,16 @@ ftp:
   passive_mode: true
 
 # Radar Configuration
-# Use standard RMA radar names (RMA1, RMA11, etc.)
+# Use standard RMA radar codes (RMA1, RMA11, etc.)
 # BUFR filename format: RADAR_VOLCODE_VOLNR_FIELD_TIMESTAMP.BUFR
 # Example: RMA11_0315_01_DBZH_20251120T120000Z.BUFR
 radars:
-  - id: "RMA11"  # Use actual radar ID (e.g., RMA1, RMA11, RMA4)
-    name: "Anguil"
-    enabled: true
+  - code: "RMA11"  # Primary key - radar code
+    title: "Anguil"
+    description: "Anguil Weather Radar"
+    center_lat: -36.5367
+    center_long: -63.9992
+    is_active: true
     strategies:
       - strategy_id: "0315"  # Strategy/volume code (4 digits)
         volumes:
@@ -24,14 +27,28 @@ radars:
             fields: ["DBZH", "DBZV", "ZDR", "RHOHV", "PHIDP", "KDP"]
           - number: "02"
             fields: ["VRAD", "WRAD"]
-  - id: "RMA1"
-    name: "Ezeiza"
-    enabled: false  # Can be disabled
+  - code: "RMA1"
+    title: "Ezeiza"
+    description: "Ezeiza Weather Radar"
+    center_lat: -34.8222
+    center_long: -58.5358
+    is_active: false  # Can be disabled
     strategies:
       - strategy_id: "0315"
         volumes:
           - number: "01"
             fields: ["DBZH", "KDP", "RHOHV"]
+  - code: "RMA4"
+    title: "Córdoba"
+    description: "Córdoba Weather Radar"
+    center_lat: -31.3200
+    center_long: -64.2450
+    is_active: true
+    strategies:
+      - strategy_id: "0315"
+        volumes:
+          - number: "01"
+            fields: ["DBZH", "DBZV", "ZDR", "RHOHV", "PHIDP"]
 
 # Database Configuration
 database:

@@ -31,7 +31,7 @@ class BUFRFile(Base):
     __tablename__ = "bufr_files"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    radar_id = Column(UUID(as_uuid=True), ForeignKey("radars.id"), nullable=False)
+    radar_code = Column(String(16), ForeignKey("radars.code"), nullable=False)
     file_path = Column(String(512), nullable=False, unique=True)
     remote_path = Column(String(512), nullable=False)
     datetime = Column(DateTime, nullable=False, index=True)
@@ -49,9 +49,9 @@ class BUFRFile(Base):
     
     # Indexes
     __table_args__ = (
-        Index('idx_bufr_files_radar_datetime', 'radar_id', 'datetime'),
+        Index('idx_bufr_files_radar_datetime', 'radar_code', 'datetime'),
         Index('idx_bufr_files_status', 'status'),
-        Index('idx_bufr_files_radar_status', 'radar_id', 'status'),
+        Index('idx_bufr_files_radar_status', 'radar_code', 'status'),
     )
     
     def __repr__(self) -> str:

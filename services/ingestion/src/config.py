@@ -34,9 +34,12 @@ class StrategyConfig(BaseModel):
 class RadarConfig(BaseModel):
     """Radar station configuration."""
     
-    id: str = Field(..., description="Unique radar identifier")
-    name: str = Field(..., description="Radar station name")
-    enabled: bool = Field(True, description="Whether radar is enabled")
+    code: str = Field(..., description="Unique radar code (primary key)")
+    title: str = Field(..., description="Radar station title")
+    description: Optional[str] = Field(None, description="Radar description")
+    center_lat: float = Field(..., description="Center latitude")
+    center_long: float = Field(..., description="Center longitude")
+    is_active: bool = Field(True, description="Whether radar is active")
     strategies: List[StrategyConfig] = Field(..., description="List of strategies")
 
 
