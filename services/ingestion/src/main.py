@@ -54,9 +54,15 @@ def main():
     # Initialize database
     db_manager = DatabaseManager(settings)
     
+    # Check for migration flag
+    force_migrate = "--migrate" in sys.argv
+    if force_migrate:
+        logger.warning("force_migration_enabled", 
+                      message="Existing tables will be dropped and recreated")
+    
     # Create tables if they don't exist
     try:
-        db_manager.create_all()
+        db_manager.create_all(force_migrate=force_migrate)
         logger.info("database_initialized")
     except Exception as e:
         logger.error("database_initialization_failed", error=str(e))

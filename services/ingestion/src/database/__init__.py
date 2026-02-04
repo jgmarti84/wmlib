@@ -79,9 +79,25 @@ class DatabaseManager:
         finally:
             session.close()
     
-    def create_all(self):
-        """Create all database tables."""
+    def create_all(self, force_migrate: bool = False):
+        """Create all database tables.
+        
+        Args:
+            force_migrate: If True, drops existing tables and recreates them.
+                          If False, attempts migration if schema is incompatible.
+        """
         from src.models import Base
+        from src.database.migrate import ensure_schema
+        
+        # Check and migrate schema if needed
+        if force_migrate:
+            logger.warning("force_migration_requested")
+            from src.database.migrate import migrate_to_new_schema
+            migrate_to_new_schema(self.engine)
+        else:
+            ensure_schema(self.engine)
+        
+        # Create all tables
         Base.metadata.create_all(self.engine)
         logger.info("database_tables_created")
     
