@@ -82,62 +82,41 @@ def initialize_radar_with_strategies(
     """Initialize or update radar with its strategies.
     
     This handles the new schema where strategies are in separate tables.
-    Radar location metadata is loaded from seed file if not provided in config.
+    Radars must already exist in the database (loaded from seed file).
+    Only strategies and their configurations are created/updated from config.
     
     Args:
         session: Database session
         radar_config: Radar configuration from settings
         
     Returns:
-        Created or updated Radar instance
+        Radar instance
+        
+    Raises:
+        ValueError: If radar doesn't exist in database
     """
     from src.database.repository import RadarRepository, StrategyRepository
     
     radar_repo = RadarRepository(session)
     strategy_repo = StrategyRepository(session)
     
-    # Get or create radar
+    # Check if radar exists in database (should be loaded from seed file)
     radar = radar_repo.get_by_code(radar_config.code)
-    if radar:
-        # Update radar metadata if provided in config
-        # Otherwise, keep existing values (from seed file)
-        if hasattr(radar_config, 'title') and radar_config.title:
-            radar.title = radar_config.title
-        if hasattr(radar_config, 'description') and radar_config.description:
-            radar.description = radar_config.description
-        if hasattr(radar_config, 'center_lat') and radar_config.center_lat is not None:
-            radar.center_lat = radar_config.center_lat
-        if hasattr(radar_config, 'center_long') and radar_config.center_long is not None:
-            radar.center_long = radar_config.center_long
-        if hasattr(radar_config, 'is_active') and radar_config.is_active is not None:
-            radar.is_active = radar_config.is_active
-        logger.info("radar_updated", radar_code=radar_config.code)
-    else:
-        # Create new radar - must have metadata from config or will fail
-        if not all([
-            hasattr(radar_config, 'title'),
-            hasattr(radar_config, 'center_lat'),
-            hasattr(radar_config, 'center_long')
-        ]):
-            logger.error(
-                "radar_not_in_seed_and_no_metadata",
-                radar_code=radar_config.code
-            )
-            raise ValueError(
-                f"Radar {radar_config.code} not found in seed data and "
-                "no location metadata provided in config"
-            )
-        
-        radar = Radar(
-            code=radar_config.code,
-            title=radar_config.title,
-            description=getattr(radar_config, 'description', ''),
-            center_lat=radar_config.center_lat,
-            center_long=radar_config.center_long,
-            is_active=getattr(radar_config, 'is_active', True)
+    if not radar:
+        logger.error(
+            "radar_not_found_in_database",
+            radar_code=radar_config.code,
+            message="Radar must exist in database before configuration. "
+                    "Ensure radar seed data is loaded."
         )
-        radar_repo.create(radar)
-        logger.info("radar_created", radar_code=radar_config.code)
+        raise ValueError(
+            f"Radar '{radar_config.code}' not found in database. "
+            f"Radars must be defined in the seed data file (radars_seed.json) "
+            f"and loaded before processing configuration."
+        )
+    
+    logger.info("radar_found", radar_code=radar_config.code, 
+                radar_title=radar.title)
     
     # Process strategies
     for strat_config in radar_config.strategies:
