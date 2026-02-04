@@ -11,15 +11,11 @@ ftp:
 
 # Radar Configuration
 # Use standard RMA radar codes (RMA1, RMA11, etc.)
+# Location metadata (title, description, lat/long) is loaded from seed data
 # BUFR filename format: RADAR_VOLCODE_VOLNR_FIELD_TIMESTAMP.BUFR
 # Example: RMA11_0315_01_DBZH_20251120T120000Z.BUFR
 radars:
-  - code: "RMA11"  # Primary key - radar code
-    title: "Anguil"
-    description: "Anguil Weather Radar"
-    center_lat: -36.5367
-    center_long: -63.9992
-    is_active: true
+  - code: "RMA11"  # Anguil - metadata loaded from seed
     strategies:
       - strategy_id: "0315"  # Strategy/volume code (4 digits)
         volumes:
@@ -27,23 +23,13 @@ radars:
             fields: ["DBZH", "DBZV", "ZDR", "RHOHV", "PHIDP", "KDP"]
           - number: "02"
             fields: ["VRAD", "WRAD"]
-  - code: "RMA1"
-    title: "Ezeiza"
-    description: "Ezeiza Weather Radar"
-    center_lat: -34.8222
-    center_long: -58.5358
-    is_active: false  # Can be disabled
+  - code: "RMA1"  # Cordoba - metadata loaded from seed
     strategies:
       - strategy_id: "0315"
         volumes:
           - number: "01"
             fields: ["DBZH", "KDP", "RHOHV"]
-  - code: "RMA4"
-    title: "Córdoba"
-    description: "Córdoba Weather Radar"
-    center_lat: -31.3200
-    center_long: -64.2450
-    is_active: true
+  - code: "RMA4"  # Resistencia - metadata loaded from seed
     strategies:
       - strategy_id: "0315"
         volumes:

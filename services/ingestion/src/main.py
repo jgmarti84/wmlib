@@ -68,6 +68,16 @@ def main():
         logger.error("database_initialization_failed", error=str(e))
         sys.exit(1)
     
+    # Load radar seed data into database
+    try:
+        from src.database.init_db import ensure_radars_from_seed
+        with db_manager.session_scope() as session:
+            ensure_radars_from_seed(session)
+        logger.info("radar_seed_data_loaded")
+    except Exception as e:
+        logger.error("radar_seed_loading_failed", error=str(e))
+        # Non-fatal - continue with radar initialization from config
+    
     # Initialize ingestion service
     service = IngestionService(settings, db_manager)
     

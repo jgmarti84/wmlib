@@ -1,12 +1,78 @@
 """Database initialization helper for new schema."""
 from typing import List
+import json
+from pathlib import Path
 import structlog
 from sqlalchemy.orm import Session
+from decimal import Decimal
 
 from src.models import Radar, Strategy, Volume, RadarStrategy
 from src.config import RadarConfig, StrategyConfig, VolumeConfig
 
 logger = structlog.get_logger()
+
+# Path to seed data file
+SEED_DATA_PATH = Path(__file__).parent / "radars_seed.json"
+
+
+def load_radar_seed_data() -> List[dict]:
+    """Load radar seed data from JSON file.
+    
+    Returns:
+        List of radar dictionaries with metadata
+    """
+    if not SEED_DATA_PATH.exists():
+        logger.warning("radar_seed_file_not_found", path=str(SEED_DATA_PATH))
+        return []
+    
+    try:
+        with open(SEED_DATA_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        logger.info("radar_seed_data_loaded", count=len(data))
+        return data
+    except Exception as e:
+        logger.error("error_loading_radar_seed_data", error=str(e))
+        return []
+
+
+def ensure_radars_from_seed(session: Session) -> None:
+    """Ensure all radars from seed data exist in the database.
+    
+    This creates or updates radars based on the seed file.
+    Only updates location metadata, doesn't affect strategies.
+    
+    Args:
+        session: Database session
+    """
+    from src.database.repository import RadarRepository
+    
+    radar_repo = RadarRepository(session)
+    seed_data = load_radar_seed_data()
+    
+    for radar_data in seed_data:
+        radar = radar_repo.get_by_code(radar_data['code'])
+        if radar:
+            # Update existing radar metadata
+            radar.title = radar_data['title']
+            radar.description = radar_data['description']
+            radar.center_lat = Decimal(radar_data['center_lat'])
+            radar.center_long = Decimal(radar_data['center_long'])
+            radar.is_active = radar_data.get('is_active', True)
+            logger.info("radar_updated_from_seed", radar_code=radar_data['code'])
+        else:
+            # Create new radar
+            radar = Radar(
+                code=radar_data['code'],
+                title=radar_data['title'],
+                description=radar_data['description'],
+                center_lat=Decimal(radar_data['center_lat']),
+                center_long=Decimal(radar_data['center_long']),
+                is_active=radar_data.get('is_active', True)
+            )
+            radar_repo.create(radar)
+            logger.info("radar_created_from_seed", radar_code=radar_data['code'])
+    
+    session.flush()
 
 
 def initialize_radar_with_strategies(
@@ -16,6 +82,7 @@ def initialize_radar_with_strategies(
     """Initialize or update radar with its strategies.
     
     This handles the new schema where strategies are in separate tables.
+    Radar location metadata is loaded from seed file if not provided in config.
     
     Args:
         session: Database session
@@ -32,22 +99,42 @@ def initialize_radar_with_strategies(
     # Get or create radar
     radar = radar_repo.get_by_code(radar_config.code)
     if radar:
-        # Update existing radar
-        radar.title = radar_config.title
-        radar.description = radar_config.description
-        radar.center_lat = radar_config.center_lat
-        radar.center_long = radar_config.center_long
-        radar.is_active = radar_config.is_active
+        # Update radar metadata if provided in config
+        # Otherwise, keep existing values (from seed file)
+        if hasattr(radar_config, 'title') and radar_config.title:
+            radar.title = radar_config.title
+        if hasattr(radar_config, 'description') and radar_config.description:
+            radar.description = radar_config.description
+        if hasattr(radar_config, 'center_lat') and radar_config.center_lat is not None:
+            radar.center_lat = radar_config.center_lat
+        if hasattr(radar_config, 'center_long') and radar_config.center_long is not None:
+            radar.center_long = radar_config.center_long
+        if hasattr(radar_config, 'is_active') and radar_config.is_active is not None:
+            radar.is_active = radar_config.is_active
         logger.info("radar_updated", radar_code=radar_config.code)
     else:
-        # Create new radar
+        # Create new radar - must have metadata from config or will fail
+        if not all([
+            hasattr(radar_config, 'title'),
+            hasattr(radar_config, 'center_lat'),
+            hasattr(radar_config, 'center_long')
+        ]):
+            logger.error(
+                "radar_not_in_seed_and_no_metadata",
+                radar_code=radar_config.code
+            )
+            raise ValueError(
+                f"Radar {radar_config.code} not found in seed data and "
+                "no location metadata provided in config"
+            )
+        
         radar = Radar(
             code=radar_config.code,
             title=radar_config.title,
-            description=radar_config.description,
+            description=getattr(radar_config, 'description', ''),
             center_lat=radar_config.center_lat,
             center_long=radar_config.center_long,
-            is_active=radar_config.is_active
+            is_active=getattr(radar_config, 'is_active', True)
         )
         radar_repo.create(radar)
         logger.info("radar_created", radar_code=radar_config.code)

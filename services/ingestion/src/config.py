@@ -32,14 +32,18 @@ class StrategyConfig(BaseModel):
 
 
 class RadarConfig(BaseModel):
-    """Radar station configuration."""
+    """Radar station configuration.
+    
+    Location metadata (title, description, lat/long) is optional and will be
+    loaded from seed data if not provided. Only code and strategies are required.
+    """
     
     code: str = Field(..., description="Unique radar code (primary key)")
-    title: str = Field(..., description="Radar station title")
-    description: Optional[str] = Field(None, description="Radar description")
-    center_lat: float = Field(..., description="Center latitude")
-    center_long: float = Field(..., description="Center longitude")
-    is_active: bool = Field(True, description="Whether radar is active")
+    title: Optional[str] = Field(None, description="Radar station title (from seed if not provided)")
+    description: Optional[str] = Field(None, description="Radar description (from seed if not provided)")
+    center_lat: Optional[float] = Field(None, description="Center latitude (from seed if not provided)")
+    center_long: Optional[float] = Field(None, description="Center longitude (from seed if not provided)")
+    is_active: Optional[bool] = Field(None, description="Whether radar is active (from seed if not provided)")
     strategies: List[StrategyConfig] = Field(..., description="List of strategies")
 
 
