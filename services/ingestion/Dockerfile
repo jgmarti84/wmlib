@@ -4,7 +4,7 @@ FROM python:3.11-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    POETRY_VERSION=1.7.1 \
+    POETRY_VERSION=1.8.0 \
     POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_CREATE=false
 
@@ -23,7 +23,7 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock* ./
 
 # Install dependencies
-RUN poetry install --no-dev --no-root || poetry install --no-root
+RUN poetry install --only main --no-root
 
 # Copy application code
 COPY . .
