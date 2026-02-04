@@ -501,9 +501,10 @@ class FTPClient:
                                 
                                 # List files in this minute directory
                                 minute_path = f"{hour_path}/{minute_str}"
-                                files = self.list_dir(minute_path)
+                                file_infos = self.list_files(minute_path)
                                 
-                                for filename in files:
+                                for file_info in file_infos:
+                                    filename = file_info.name
                                     # Filter by vol_types if provided
                                     if vol_types is not None:
                                         if not vol_types.match(filename):
